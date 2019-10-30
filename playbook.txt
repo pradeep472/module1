@@ -1,0 +1,23 @@
+Melanie, I was given the following from Wayne on installing ASF Apache:
+
+
+- hosts: current
+  gather_facts: yes
+  tasks:
+  - action: template src=host.localhost.apache.DOMAINNAME dest=/tmp/host.localhost.apache.DOMAINNAME
+  - action: template src=host.localhost.tomcat.DOMAINNAME dest=/tmp/host.localhost.tomcat.DOMAINNAME
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZjdk version="1.8.0_181_b32_64bit-Linux" action=install
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZahs version="Apache24Tomcat85_RH7-LX2" action=install
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZahscfg version="1.4_24xApacheConfigs-LX1" action=install
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZahsscr version="1.4_ApacheScripts-LX1" action=install
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZahslbp version="wls12.2.1.3_64bit-LX1" action=install
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZahsctm version="2.2_TomcatConfigs-LX1" action=install
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZahssct version="1.3_TomcatScripts-LX1" action=install
+  - shell: /apps/opt/ASF-Apache/scripts/httpd/ApacheAdmin.sh -A START -d DOMAINNAME
+   become: true
+   become_method: pbrun
+   become_user: root
+  - shell: /apps/opt/ASF-Apache/scripts/tomcat/TomcatAdmin.sh -A START -d DOMAINNAME
+   become: true
+   become_method: pbrun
+   become_user: root
