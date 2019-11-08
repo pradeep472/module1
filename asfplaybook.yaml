@@ -1,0 +1,71 @@
+---
+
+- hosts: current
+  gather_facts: yes
+  vars:
+    preq_pkgs:
+      - krb5-workstation
+      - mod_auth_kerb
+      - elinks
+      - mailcap
+      - apr-devel
+      - apr-util
+      - apr-util-devel
+      - apr-util-ldap
+      - sharutils
+    preq_pkgs_rem:
+      - tomcatjss
+    sysctl_param:
+      - kernel.sem: 250 128000 32 512
+
+    dom_name: '1digital-web'
+
+    jboss_config: 'certs'
+
+    ssi_dir: '/apps/etc/SSI'
+
+    appssi_dir: "{{ ssi_dir }}/appssi"
+
+    ssi_file:
+      - "{{ jboss_config }}/host.{{ ansible_hostname }}.apache.{{ dom_name }}"
+      - "{{ jboss_config }}/jbacert/host.{{ ansible_fqdn }}.jbacert.{{ dom_name }}"
+
+    appssi_files:
+      - "{{ jboss_config }}/host.{{ ansible_hostname }}.apache.{{ dom_name }}.include"
+      - "{{ jboss_config }}/host.{{ ansible_hostname }}.apache.{{ dom_name }}.vhost_include"
+  tasks:
+  - block:
+    - name: Install pre-requisite packages
+      yum: name="{{ preq_pkgs }}" state=installed
+
+    - name: Uninstall pre-requisite packages
+      yum: name="{{ preq_pkgs_rem }}" state=absent
+
+    - name: Set pre-requisite sysctl parameter
+      sysctl: name="{{ item.key }}" value="{{ item.value }}" sysctl_set=yes state=present reload=yes
+      with_dict: "{{ sysctl_param }}"
+
+    - action: file path="{{ appssi_dir }}" recurse=yes state=directory owner="euroweb" group="eurogrp"
+
+    - name: copy ssi files
+      copy: src="{{ item }}" dest="{{ ssi_dir }}/host.{{ ansible_fqdn }}.{{ item.split('.')[-2]}}.{{ item.split('.')[-1] }}" mode='0755'
+      with_items: "{{ ssi_file }}"
+
+    - name: copy ssi files to appssi
+      copy: src="{{ item }}" dest="{{ appssi_dir }}/host.{{ ansible_fqdn }}.{{ item.split('.')[-3]}}.{{ item.split('.')[-2]}}.{{ item.split('.')[-1] }}" mode='0755'
+      with_items: "{{ appssi_files }}"
+
+    become: true
+    become_method: pbrun
+    become_user: root
+    #ignore_errors: yes
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZjdk version="1.8.0_181_b32_64bit-Linux" action=install
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZahs version="Apache2439Tomcat8543_RH7-LX1" action=install
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZahscfg version="1.8_24xApacheConfigs-LX1" action=install
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZahsscr version="1.4_ApacheScripts-LX1" action=install
+  - local_action: ansibleplus_mw Host={{ inventory_hostname }} package=VZahscer version="1.3_ApacheCerts-LX1" action=install
+  - name: Run ApacheAdmin.sh Script 
+    shell: /apps/opt/ASF-Apache/scripts/httpd/ApacheAdmin.sh -A START -d "{{ dom_name }}"
+    become: true
+    become_method: pbrun
+    become_user: root
