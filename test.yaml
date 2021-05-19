@@ -1,0 +1,38 @@
+image: maven:3.3.9-jdk-8
+stages:
+  - build
+  - docker-build
+  - deploy-oc
+  
+variables:
+#  REGISTRY: nexus.homeoffice.anfcorp.com:6101
+  OC_URL: https://api.ocpv1qa-corp.homeoffice.anfcorp.com:6443
+
+build:
+  stage: build
+  only:
+    - master 
+  script:
+    - mvn -U clean install
+  artifacts:
+    paths:
+      - ./target
+docker-build:
+  image: docker:latest
+  services:
+    - docker:dind
+  stage: docker-build
+  script:
+
+    - docker build --rm -t $REGISTRY/poxmit-test:$CI_COMMIT_SHORT_SHA .
+    - docker login $REGISTRY -u=$REGISTRY_USER -p=$REGISTRY_PASSWORD
+    - docker push $REGISTRY/poxmit-test:$CI_COMMIT_SHORT_SHA
+  dependencies:
+    - build
+deploy-oc:
+  stage: deploy-oc
+
+  before_script:
+   - oc login --token=$OC_QA_TOKEN --server=$OC_URL
+   - oc get pods
+
